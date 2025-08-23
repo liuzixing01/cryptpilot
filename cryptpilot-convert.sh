@@ -442,9 +442,6 @@ step:update_rootfs_and_initrd() {
     fi
 
     log::info "Installing rpm packages"
-    packages+=("cryptpilot")
-    packages+=("attestation-agent")
-    packages+=("confidential-data-hub")
 
     source "${rootfs_mount_point}"/etc/os-release
     # yum-config-manager --installroot="${rootfs_mount_point}" --add-repo ${YUM_DCAP_REPO}
@@ -452,8 +449,14 @@ step:update_rootfs_and_initrd() {
         if [ "$VERSION" = "23.3" ];then
             yum --nogpgcheck --releasever=$VERSION --installroot="${rootfs_mount_point}" install -y "${packages[@]}"
         else
+            #packages+=("cryptpilot")
+            #packages+=("attestation-agent")
+            #packages+=("confidential-data-hub")
             rpmdb --rebuilddb --dbpath ${rootfs_mount_point}/var/lib/rpm
-            yum --installroot="${rootfs_mount_point}" install -y "${packages[@]}"
+            for rpm_package in "${packages[@]}"; do
+                rpm  --nodeps -ivh --root="${rootfs_mount_point}" "$rpm_package"
+            done
+            #yum --installroot="${rootfs_mount_point}" install -y "${packages[@]}"
         fi
     fi
     yum --installroot="${rootfs_mount_point}" clean all
