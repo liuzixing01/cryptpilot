@@ -547,6 +547,8 @@ else
 fi
 
 echo "Detected grub2.cfg, re-generate it now: $grub2_cfg"
+echo "Disabling the OS_PROBER .. "
+echo 'GRUB_DISABLE_OS_PROBER=true' >> /etc/default/grub
 grub2-mkconfig -o "$grub2_cfg"
 
 echo "Cleaning up..."
