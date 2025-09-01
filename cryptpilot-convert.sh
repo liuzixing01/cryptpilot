@@ -521,15 +521,20 @@ set -u
 BASH_XTRACEFD=3
 set -x
 
-KERNELIMG=$(ls -1 /boot/vmlinuz-* 2>/dev/null | grep -v "rescue" | head -1)
-if [ -z "$KERNELIMG" ] ; then
-    echo 'No kernel image found, skipping initrd stuff.'>&2
+KERNELIMG=()
+mapfile -t KERNELIMG < <(find /boot -maxdepth 1 -type f -name 'vmlinuz-*' '!' -name '*rescue*' 2>/dev/null)
+if [ ${#KERNELIMG[@]} -eq 0 ]; then
+echo 'No kernel image found, skipping initrd stuff.'>&2
     exit 1
 fi
-echo "Detected kernel image: $KERNELIMG"
-KERNELVER=${KERNELIMG#/boot/vmlinuz-}
-echo "Generating initrd with dracut"    
-dracut -N --kver $KERNELVER --fstab --add-fstab /etc/fstab --force -v
+
+for img in "${KERNELIMG[@]}"; do
+    echo "Detected kernel image: $img"
+    KERNELVER=${img#/boot/vmlinuz-}
+    echo "Generating initrd with dracut"
+    dracut -N --kver $KERNELVER --fstab --add-fstab /etc/fstab --force -v
+    echo "Generating initrd with dracut finished"
+done
 
 grub2_cfg=""
 if [ -e /etc/grub2.cfg ] ; then
