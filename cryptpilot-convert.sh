@@ -14,8 +14,8 @@ readonly PURPLE='\033[0;35m'
 readonly CYAN='\033[0;36m'
 readonly NC='\033[0m' # No Color
 
-# the size is currently fixed with 512MB
-readonly BOOT_PART_SIZE="512M"
+# the size is currently fixed with 1024MB
+readonly BOOT_PART_SIZE="1024M"
 # alignment to 2048 sectors creating a new partition
 readonly PARTITION_SECTOR_ALIGNMENT=2048
 
