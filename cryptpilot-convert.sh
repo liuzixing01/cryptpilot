@@ -221,6 +221,7 @@ proc::print_help_and_exit() {
     echo "      --package <rpm_package>                             Specify an RPM package name or path to the RPM file to install in to the disk before"
     echo "  -b, --boot_part_size <size>                             Instead of using the default partition size(512MB), specify the size of the boot partition"
     echo "                                                          converting. This can be specified multiple times."
+    echo "      --local_install_package <rpm_package>               Specify a local RPM package file to install into the disk, for the offline environment"
     echo "  -h, --help                                              Show this help message and exit."
     exit "$1"
 }
@@ -414,6 +415,21 @@ step::extract_boot_part_from_rootfs() {
     disk::umount_wait_busy "${rootfs_mount_point}"
 }
 
+disk::install_local_rpm_on_rootfs() {
+    local rootfs_mount_point="$1"
+    shift
+    local pkgs=("$@")
+
+    chroot "${rootfs_mount_point}" rpmdb --rebuilddb --dbpath /var/lib/rpm
+
+    for rpm_package in "${pkgs[@]}"; do
+        rpm  --nodeps -ivh --root="${rootfs_mount_point}" "$rpm_package"
+    done
+
+    chroot "${rootfs_mount_point}" yum clean all
+}
+
+
 disk::install_rpm_on_rootfs() {
     local rootfs_mount_point="$1"
     shift
@@ -494,8 +510,14 @@ step:update_rootfs_and_initrd() {
     mv "${rootfs_mount_point}/etc/hosts" "${rootfs_mount_point}/etc/hosts.cryptpilot"
     touch "${rootfs_mount_point}/etc/hosts"
     mount -o bind,ro "$(realpath /etc/hosts)" "${rootfs_mount_point}/etc/hosts"
-    log::info "Installing rpm packages"
-    disk::install_rpm_on_rootfs "$rootfs_mount_point" "${packages[@]}"
+
+    if [ ${#local_install_packages[@]} -gt 0 ]; then
+        log::info "Installing local rpm packages"
+        disk::install_local_rpm_on_rootfs "$rootfs_mount_point" "${local_install_packages[@]}"
+    else
+        log::info "Installing rpm packages"
+        disk::install_rpm_on_rootfs "$rootfs_mount_point" "${packages[@]}"
+    fi
 
     # copy cryptpilot config
     log::info "Installing cryptpilot config from ${config_dir} to target rootfs"
@@ -808,6 +830,8 @@ main() {
     local rootfs_orig_part
     local rootfs_orig_part_num
     local rootfs_orig_part_exist=false
+    local local_install_packages=()
+
 
     while [[ "$#" -gt 0 ]]; do
         case $1 in
@@ -841,6 +865,10 @@ main() {
             ;;
         --package)
             packages+=("$2")
+            shift 2
+            ;;
+        --local_install_package)
+            local_install_packages+=("$2")
             shift 2
             ;;
         -b | --boot_part_size)
